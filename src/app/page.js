@@ -173,7 +173,9 @@ export default function UlarTanggaLDR() {
   const [isRolling, setIsRolling] = useState(false)
   const [diceNum, setDiceNum] = useState(1)
   const [rollText, setRollText] = useState('')
-  const [logs, setLogs] = useState([{ id: Date.now(), msg: '<div class="italic text-gray-400">Game dimulai. Semoga beruntung!</div>' }])
+
+  // Perbaikan Hydration: Gunakan ID statis saat inisialisasi state pertama kali
+  const [logs, setLogs] = useState([{ id: 'log-init', msg: '<div class="italic text-gray-400">Game dimulai. Semoga beruntung!</div>' }])
 
   // Board Coordinates State for SVG & Tokens
   const [cellsPos, setCellsPos] = useState({})
@@ -249,6 +251,12 @@ export default function UlarTanggaLDR() {
   // Handle Dice Roll
   const rollDice = async () => {
     if (isMoving) return
+
+    // --- Tambahan: Otomatis scroll ke papan (khususnya untuk layar HP) ---
+    if (boardRef.current && window.innerWidth < 1024) {
+      boardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+
     setIsMoving(true)
     setIsRolling(true)
     setRollText('')
@@ -411,8 +419,8 @@ export default function UlarTanggaLDR() {
       <div className="w-full max-w-4xl mx-auto bg-white rounded-[2rem] shadow-xl overflow-hidden border-4 border-white">
         {/* Header */}
         <div className="bg-[#ff6b9e] p-6 pb-8 text-white text-center rounded-t-[1.5rem]">
-          <h1 className="text-xl md:text-4xl font-bold flex items-center justify-center gap-3 drop-shadow-sm">🤍 Ular Tangga Cinta 🤍</h1>
-          <p className="mt-2 text-pink-50 font-medium text-md md:text-lg">Biar Jauh di Mata, Tetap Dekat di Hati ✨</p>
+          <h1 className="text-3xl md:text-4xl font-bold flex items-center justify-center gap-3 drop-shadow-sm">🤍 Ular Tangga LDR 🤍</h1>
+          <p className="mt-2 text-pink-50 font-medium text-lg">Biar Jauh di Mata, Tetap Dekat di Hati ✨</p>
         </div>
 
         <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-8 bg-white rounded-t-3xl -mt-4 relative z-10">
