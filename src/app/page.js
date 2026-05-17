@@ -161,21 +161,66 @@ const intimateQuestions = [
   'Apa satu kutipan (quotes) favoritmu yang selalu kamu ingat saat sedang merasa ragu?',
 ]
 
+// --- KOMPONEN DADU SVG KUSTOM (Anti-Error) ---
+const DiceSVG = ({ num, isRolling }) => {
+  // Posisi titik pada dadu (1-6)
+  const dots = {
+    1: [{ cx: 50, cy: 50 }],
+    2: [
+      { cx: 30, cy: 30 },
+      { cx: 70, cy: 70 },
+    ],
+    3: [
+      { cx: 25, cy: 25 },
+      { cx: 50, cy: 50 },
+      { cx: 75, cy: 75 },
+    ],
+    4: [
+      { cx: 25, cy: 25 },
+      { cx: 75, cy: 25 },
+      { cx: 25, cy: 75 },
+      { cx: 75, cy: 75 },
+    ],
+    5: [
+      { cx: 25, cy: 25 },
+      { cx: 75, cy: 25 },
+      { cx: 50, cy: 50 },
+      { cx: 25, cy: 75 },
+      { cx: 75, cy: 75 },
+    ],
+    6: [
+      { cx: 25, cy: 20 },
+      { cx: 25, cy: 50 },
+      { cx: 25, cy: 80 },
+      { cx: 75, cy: 20 },
+      { cx: 75, cy: 50 },
+      { cx: 75, cy: 80 },
+    ],
+  }
+
+  return (
+    <svg viewBox="0 0 100 100" className={`w-32 h-32 md:w-40 md:h-40 ${isRolling ? 'animate-spin' : ''}`} style={{ filter: 'drop-shadow(0px 10px 15px rgba(244, 63, 94, 0.4))' }}>
+      <rect x="5" y="5" width="90" height="90" rx="20" fill="#f43f5e" />
+      {dots[num]?.map((dot, i) => (
+        <circle key={i} cx={dot.cx} cy={dot.cy} r="10" fill="white" />
+      ))}
+    </svg>
+  )
+}
+
 // --- MAIN COMPONENT ---
 export default function UlarTanggaLDR() {
   // States
   const [players, setPlayers] = useState({
-    1: { position: 1, color: '#3b82f6', name: 'Player 1', icon: 'fa-mars' },
-    2: { position: 1, color: '#ec4899', name: 'Player 2', icon: 'fa-venus' },
+    // Menggunakan text murni (♂ dan ♀) alih-alih FontAwesome
+    1: { position: 1, color: '#3b82f6', name: 'Player 1', icon: '♂' },
+    2: { position: 1, color: '#ec4899', name: 'Player 2', icon: '♀' },
   })
   const [currentPlayer, setCurrentPlayer] = useState(1)
   const [isMoving, setIsMoving] = useState(false)
   const [isRolling, setIsRolling] = useState(false)
   const [diceNum, setDiceNum] = useState(1)
-  const [rollText, setRollText] = useState('')
-
-  // Perbaikan Hydration: Gunakan ID statis saat inisialisasi state pertama kali
-  const [logs, setLogs] = useState([{ id: 'log-init', msg: '<div class="italic text-gray-400">Game dimulai. Semoga beruntung!</div>' }])
+  const [rollText, setRollText] = useState('Siap bermain?')
 
   // Board Coordinates State for SVG & Tokens
   const [cellsPos, setCellsPos] = useState({})
@@ -188,12 +233,6 @@ export default function UlarTanggaLDR() {
   // Refs
   const boardRef = useRef(null)
   const cellRefs = useRef({})
-  const logEndRef = useRef(null)
-
-  // Auto scroll logs
-  useEffect(() => {
-    if (logEndRef.current) logEndRef.current.scrollIntoView({ behavior: 'smooth' })
-  }, [logs])
 
   // Generate Board Layout (ZigZag)
   const boardCells = useMemo(() => {
@@ -235,16 +274,10 @@ export default function UlarTanggaLDR() {
 
   // Initialize positions and resize listener
   useEffect(() => {
-    // slight delay to ensure DOM is fully painted
     setTimeout(calculatePositions, 100)
     window.addEventListener('resize', calculatePositions)
     return () => window.removeEventListener('resize', calculatePositions)
   }, [calculatePositions])
-
-  // Add Log Helper
-  const addLog = (msg) => {
-    setLogs((prev) => [...prev, { id: Date.now() + Math.random(), msg }])
-  }
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -252,9 +285,9 @@ export default function UlarTanggaLDR() {
   const rollDice = async () => {
     if (isMoving) return
 
-    // --- Tambahan: Otomatis scroll ke papan (khususnya untuk layar HP) ---
+    // --- Otomatis scroll ke papan (khususnya untuk layar HP) ---
     if (boardRef.current && window.innerWidth < 1024) {
-      boardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      boardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
     setIsMoving(true)
@@ -274,7 +307,6 @@ export default function UlarTanggaLDR() {
 
     const pName = players[currentPlayer].name
     setRollText(`${pName} dapat angka ${finalNum}!`)
-    addLog(`<span style="color:${players[currentPlayer].color}">■</span> ${pName} jalan ${finalNum} langkah.`)
 
     await handleMovement(finalNum)
   }
@@ -286,7 +318,6 @@ export default function UlarTanggaLDR() {
 
     if (targetPos > 100) {
       targetPos = 100 - (targetPos - 100)
-      addLog(`Terlalu besar! Mundur ke ${targetPos}.`)
     }
 
     const stepDir = currentPos < targetPos ? 1 : -1
@@ -310,11 +341,9 @@ export default function UlarTanggaLDR() {
 
     if (ladders[pos]) {
       finalPos = ladders[pos]
-      addLog(`<span class="font-bold text-pink-600">Naik Tangga! ${pos} ➔ ${finalPos}</span>`)
       hasMoved = true
     } else if (snakes[pos]) {
       finalPos = snakes[pos]
-      addLog(`<span class="font-bold text-pink-600">Yahh digigit Ular! ${pos} ➔ ${finalPos}</span>`)
       hasMoved = true
     }
 
@@ -328,7 +357,6 @@ export default function UlarTanggaLDR() {
     }
 
     if (finalPos === 100) {
-      addLog(`<span class="font-bold text-pink-600">🎉 ${players[currentPlayer].name} MENANG! 🎉</span>`)
       setShowWin(true)
       return
     }
@@ -343,20 +371,18 @@ export default function UlarTanggaLDR() {
 
   const endTurn = () => {
     setCurrentPlayer((prev) => (prev === 1 ? 2 : 1))
-    setRollText('')
+    setRollText('Giliran selanjutnya...')
     setIsMoving(false)
   }
 
   // Modal Actions
   const handleAnswered = () => {
     setActionModal({ ...actionModal, show: false })
-    addLog(`${players[currentPlayer].name} menjawab pertanyaan dengan jujur. 💖`)
     setTimeout(endTurn, 300)
   }
 
   const handleSkip = async () => {
     setActionModal({ ...actionModal, show: false })
-    addLog(`<span class="font-bold text-pink-600">❌ ${players[currentPlayer].name} tidak menjawab. Mundur 3 langkah!</span>`)
 
     let newPos = players[currentPlayer].position - 3
     if (newPos < 1) newPos = 1
@@ -378,8 +404,7 @@ export default function UlarTanggaLDR() {
     }))
     setCurrentPlayer(1)
     setIsMoving(false)
-    setRollText('')
-    setLogs([{ id: Date.now(), msg: '<div class="italic text-gray-400">Game direset. Selamat bermain!</div>' }])
+    setRollText('Siap bermain?')
     setShowWin(false)
   }
 
@@ -392,11 +417,6 @@ export default function UlarTanggaLDR() {
       return `M ${startPos.x} ${startPos.y} Q ${midX} ${midY} ${endPos.x} ${endPos.y}`
     }
     return `M ${startPos.x} ${startPos.y} L ${endPos.x} ${endPos.y}`
-  }
-
-  const getDiceIcon = (num) => {
-    const icons = ['fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six']
-    return icons[num - 1] || 'fa-dice-one'
   }
 
   // Current Modals Props Helper
@@ -426,7 +446,7 @@ export default function UlarTanggaLDR() {
         <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-8 bg-white rounded-t-3xl -mt-4 relative z-10">
           {/* Left Side: Board */}
           <div className="flex-1 w-full flex flex-col items-center">
-            <div className="w-full relative" ref={boardRef}>
+            <div className="w-full relative scroll-mt-6" ref={boardRef}>
               {/* CSS Grid Board */}
               <div className="grid grid-cols-10 grid-rows-10 gap-[2px] w-full max-w-[600px] aspect-square mx-auto bg-white border-4 border-pink-400 rounded-xl p-1 shadow-[0_8px_20px_-5px_rgba(244,114,182,0.4)] relative">
                 {boardCells.map((num) => {
@@ -445,7 +465,7 @@ export default function UlarTanggaLDR() {
                   return (
                     <div key={num} id={`cell-${num}`} ref={(el) => (cellRefs.current[num] = el)} className={cellClasses}>
                       {num}
-                      {actionTiles.includes(num) && <i className="fa-solid fa-heart absolute bottom-1 right-1 text-[10px] sm:text-xs opacity-50 text-pink-400"></i>}
+                      {actionTiles.includes(num) && <span className="absolute bottom-1 right-1 text-[10px] sm:text-xs opacity-60">🤍</span>}
                     </div>
                   )
                 })}
@@ -479,7 +499,7 @@ export default function UlarTanggaLDR() {
                 return (
                   <div
                     key={`player-${pId}`}
-                    className="absolute rounded-full flex justify-center items-center text-white text-[clamp(0.6rem,1.5vw,1rem)] shadow-[0_2px_5px_rgba(0,0,0,0.3)] z-10 transition-all duration-400 ease-out"
+                    className="absolute rounded-full flex justify-center items-center text-white text-[clamp(0.6rem,1.5vw,1.2rem)] font-black shadow-[0_2px_5px_rgba(0,0,0,0.3)] z-10 transition-all duration-400 ease-out"
                     style={{
                       backgroundColor: players[pId].color,
                       width: tokenSize,
@@ -489,7 +509,7 @@ export default function UlarTanggaLDR() {
                       transition: isMoving && pId === currentPlayer ? 'all 0.3s linear' : 'all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)',
                     }}
                   >
-                    <i className={`fa-solid ${players[pId].icon}`}></i>
+                    <span style={{ transform: 'translateY(-1px)' }}>{players[pId].icon}</span>
                   </div>
                 )
               })}
@@ -508,35 +528,19 @@ export default function UlarTanggaLDR() {
               </div>
             </div>
 
-            {/* Dice Area */}
-            <div className="flex flex-col items-center justify-center bg-pink-50/50 rounded-3xl p-8 border border-pink-50 shadow-sm">
-              <div className={`text-6xl text-rose-600 mb-6 drop-shadow-md ${isRolling ? 'animate-spin' : ''}`}>
-                <i className={`fa-solid ${getDiceIcon(diceNum)}`}></i>
+            {/* Dice Area (Clickable Dice SVG) */}
+            <div className="flex flex-col items-center justify-center bg-pink-50/50 rounded-3xl p-10 border border-pink-50 shadow-sm flex-grow">
+              <h3 className="font-bold text-gray-700 mb-8 text-lg">Sentuh Dadu</h3>
+
+              {/* Dadu Interaktif Custom SVG */}
+              <div onClick={isMoving ? undefined : rollDice} className={`flex justify-center items-center mb-4 transition-all ${isMoving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95 cursor-pointer'}`}>
+                <DiceSVG num={diceNum} isRolling={isRolling} />
               </div>
-              <button
-                onClick={rollDice}
-                disabled={isMoving}
-                className={`bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transform transition-all tracking-wide flex items-center gap-2 ${isMoving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
-              >
-                <i className="fa-solid fa-rotate"></i> Kocok Dadu
-              </button>
-              <p className="mt-4 text-md font-semibold text-gray-500 h-6">{rollText}</p>
+
+              <p className="mt-6 text-lg font-bold text-gray-600 h-8 text-center">{rollText}</p>
             </div>
 
-            {/* Event Log */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex-grow shadow-sm flex flex-col">
-              <h3 className="font-bold text-gray-700 mb-2 border-b pb-2 flex items-center gap-2">
-                <i className="fa-solid fa-list-ul text-pink-400"></i> Catatan Perjalanan
-              </h3>
-              <div className="text-sm text-gray-600 h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                {logs.map((log) => (
-                  <div key={log.id} dangerouslySetInnerHTML={{ __html: log.msg }} />
-                ))}
-                <div ref={logEndRef} />
-              </div>
-            </div>
-
-            <div className="flex justify-between mt-auto">
+            <div className="flex justify-between mt-auto pt-4">
               <button onClick={() => setShowRules(true)} className="text-sm text-pink-600 hover:text-pink-800 underline font-medium">
                 Cara Bermain
               </button>
@@ -554,15 +558,13 @@ export default function UlarTanggaLDR() {
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-[popIn_0.3s_ease-out]">
             <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-4 text-white text-center relative">
               <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full p-2 shadow-lg">
-                <div className="bg-pink-100 text-pink-600 rounded-full w-12 h-12 flex items-center justify-center text-2xl">
-                  <i className="fa-solid fa-heart"></i>
-                </div>
+                <div className="bg-pink-100 text-pink-600 rounded-full w-12 h-12 flex items-center justify-center text-2xl font-bold">❤️</div>
               </div>
               <h2 className="text-2xl font-bold mt-6">Deep Talk & Goals!</h2>
             </div>
             <div className="p-8 text-center">
               <div className="text-xs text-pink-600 font-bold mb-4 bg-pink-50 py-1.5 px-4 rounded-lg inline-block border border-pink-100 uppercase tracking-wider shadow-sm">
-                <i className="fa-solid fa-microphone mr-1"></i> {asker} Bertanya kepada {answerer}
+                🎤 {asker} Bertanya kepada {answerer}
               </div>
               <div className="italic font-medium text-gray-700 text-lg mb-8">"{actionModal.text}"</div>
 
@@ -587,7 +589,7 @@ export default function UlarTanggaLDR() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden text-center animate-[popIn_0.3s_ease-out]">
             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-8 text-white relative overflow-hidden">
-              <i className="fa-solid fa-crown text-6xl mb-4 text-yellow-100 drop-shadow-md relative z-10"></i>
+              <div className="text-6xl mb-4 drop-shadow-md relative z-10">👑</div>
               <h2 className="text-3xl font-bold relative z-10">SELAMAT!</h2>
             </div>
             <div className="p-8">
@@ -613,17 +615,17 @@ export default function UlarTanggaLDR() {
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-[popIn_0.2s_ease-out]">
             <div className="bg-pink-500 p-4 text-white text-center flex justify-between items-center">
               <h2 className="text-xl font-bold">Cara Bermain</h2>
-              <button onClick={() => setShowRules(false)} className="text-white hover:text-pink-200">
-                <i className="fa-solid fa-xmark text-xl"></i>
+              <button onClick={() => setShowRules(false)} className="text-white hover:text-pink-200 font-bold text-xl">
+                ✖️
               </button>
             </div>
             <div className="p-6 text-gray-700 space-y-3 text-sm">
               <p>1. Game ini dimainkan oleh 2 orang. (Bisa share screen atau saling lapor angka dadu).</p>
               <p>
-                2. Tekan tombol <strong>Kocok Dadu</strong> secara bergantian.
+                2. Tekan atau Sentuh <strong>Dadu Besar</strong> secara bergantian.
               </p>
               <p>
-                3. Jika mendarat di petak berlogo hati <i className="fa-solid fa-heart text-pink-400"></i>, akan muncul <strong>Pertanyaan Deep Talk / Mindset</strong>.
+                3. Jika mendarat di petak berlogo hati 🤍, akan muncul <strong>Pertanyaan Deep Talk / Mindset</strong>.
               </p>
               <p>
                 4. <strong>Aturan Bertanya:</strong> Jika <span className="text-blue-500 font-bold">Player 1 (Biru)</span> yang mendarat, maka <span className="text-pink-500 font-bold">Player 2 (Pink)</span> yang bertanya, dan Player 1
@@ -632,9 +634,7 @@ export default function UlarTanggaLDR() {
               <p>
                 5. Jika menolak menjawab, pilih tombol <strong>"Tidak Menjawab"</strong>, risikonya <strong>mundur 3 langkah!</strong>
               </p>
-              <p>
-                6. Tangga <i className="fa-solid fa-arrow-up text-green-500"></i> membawa naik, Ular <i className="fa-solid fa-arrow-down text-red-500"></i> membawa turun.
-              </p>
+              <p>6. Tangga ⬆️ membawa naik, Ular ⬇️ membawa turun.</p>
               <p>7. Yang pertama mencapai angka 100 menang!</p>
             </div>
           </div>
